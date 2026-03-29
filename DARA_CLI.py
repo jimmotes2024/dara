@@ -136,13 +136,27 @@ def search(query, legacy_query):
 
 @memory.command()
 def rollup():
-    """Rollup large memories into vector DB (improved summarization)."""
+    """Rollup large memories into vector DB with real summarization."""
     try:
         journal = JOURNAL_PATH.read_text()
-        summary = f"Journal rollup as of {datetime.now()}: {len(journal)} chars. Recent activity logged."
+        # Simple but effective summarization of recent activity
+        lines = journal.splitlines()[-80:]  # focus on recent entries
+        summary_lines = ["Journal Rollup Summary:", f"As of {datetime.now().date()}"]
+        
+        for line in lines:
+            line = line.strip()
+            if line and (line.startswith(('- ', '## ', '* ')) or 'CLI' in line or 'Chroma' in line or 'fix' in line.lower()):
+                summary_lines.append(line[:200])
+        
+        summary = "\n".join(summary_lines[-15:])  # keep it concise
         db = DaraVectorDB(quiet=True)
-        db.add_memory(summary, {'type': 'rollup', 'source': 'journal'})
-        console.print("[green]✓ Memory rollup complete.[/green]")
+        db.add_memory(summary, {
+            'type': 'rollup',
+            'source': 'journal',
+            'timestamp': str(datetime.now()),
+            'original_chars': len(journal)
+        })
+        console.print(f"[green]✓ Memory rollup complete.[/green] (added {len(summary)} char summary)")
     except Exception as e:
         console.print(f"[red]✗ Rollup error:[/red] {str(e)}", style="bold red")
 
