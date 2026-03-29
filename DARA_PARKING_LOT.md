@@ -15,3 +15,4 @@
 
 ## Canary
 - Canary phrase: DARA_CANARY_2026_03_11: amber-anchor
+- Upgraded vector DB from FAISS to ChromaDB - better persistence, metadata, rollups, and no more manual index management. Marked as complete. (added 2026-03-29)

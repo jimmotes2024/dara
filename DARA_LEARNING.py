@@ -10,6 +10,11 @@ from datetime import datetime
 from DARA_VECTOR_DB import DaraVectorDB
 from DARA_CANARY_CHECK import check_canary, EXPECTED_CANARIES
 
+# Use centralized config (single source of truth)
+import sys
+sys.path.insert(0, '/Users/jimmotes/dara')
+from dara_config import get_path
+
 class DaraLearning:
     def __init__(self):
         self.db = DaraVectorDB()
@@ -34,7 +39,7 @@ class DaraLearning:
         self.db.add_memory(summary, {'type': 'learning', 'source': url, 'topic': topic})
 
         # Log to journal
-        journal_path = Path("/Users/jimmotes/DARA_JOURNAL.md")
+        journal_path = get_path('journal')
         with open(journal_path, 'a') as f:
             f.write(f"\n## Learning {datetime.now()}\n- Topic: {topic}\n- Source: {url}\n- Stored in memory.\n")
 

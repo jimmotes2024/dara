@@ -10,6 +10,11 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from datetime import datetime
 
+# Use centralized config (single source of truth)
+import sys
+sys.path.insert(0, '/Users/jimmotes/dara')
+from dara_config import get_path
+
 STOCKS = {
     'RIO': 'Rio Tinto (mining)',
     'TSLA': 'Tesla (EV/autonomous)',
@@ -64,7 +69,7 @@ def send_alert(subject: str, body: str):
     print(f"Alert logged: {subject}")
 
 def daily_review():
-    journal_path = Path("/Users/jimmotes/DARA_JOURNAL.md")
+    journal_path = get_path('journal')
     alerts = []
     with open(journal_path, 'a') as f:
         f.write(f"\n## Daily Stock Review {datetime.now().date()}\n")

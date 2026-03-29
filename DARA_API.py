@@ -106,10 +106,12 @@ def scout_opps():
     opps = scout_opportunities()
     return {"opportunities": opps}
 
-@app.get("/drift/check")
-def check_drift(agent_id: str, action: str):
-    safeguard = DriftSafeguard()
-    return safeguard.check_access(agent_id, action)
+# @app.get("/drift/check")
+# def check_drift(agent_id: str, action: str):
+#     # KREDO module unavailable - parked until integrated
+#     # safeguard = DriftSafeguard()
+#     # return safeguard.check_access(agent_id, action)
+#     return {"status": "drift check parked (KREDO integration pending)", "agent_id": agent_id}
 
 @app.post("/respond")
 def respond(message: dict):

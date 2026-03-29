@@ -7,6 +7,11 @@ Focuses on AI, tech, and secure revenue streams.
 from pathlib import Path
 from datetime import datetime
 
+# Use centralized config (single source of truth)
+import sys
+sys.path.insert(0, '/Users/jimmotes/dara')
+from dara_config import get_path
+
 def search_web(query):
     # Mock for demo; in real, integrate with tool
     return {"summary": f"Simulated results for '{query}': Emerging opportunities in AI infrastructure, quantum computing, and sustainable energy."}
@@ -23,8 +28,8 @@ def scout_opportunities():
         summary = results.get('summary', 'No data.')
         opportunities.append(f"{query}: {summary}")
 
-    # Log to journal
-    journal_path = Path("/Users/jimmotes/DARA_JOURNAL.md")
+    # Log to journal (using centralized config)
+    journal_path = get_path('journal')
     with open(journal_path, 'a') as f:
         f.write(f"\n## Opportunity Scout {datetime.now().date()}\n")
         for opp in opportunities:

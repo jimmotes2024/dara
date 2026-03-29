@@ -19,6 +19,7 @@ PATHS = {
     'user': BASE_DIR / 'DARA_USER.md',
     'vector_index': BASE_DIR / 'dara_memory.index',
     'vector_meta': BASE_DIR / 'dara_memory_meta.json',
+    'chroma_path': Path.home() / '.dara' / 'chroma_db',
 }
 
 # Settings

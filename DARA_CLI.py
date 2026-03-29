@@ -64,7 +64,10 @@ Professional, secure memory and project tooling with polished output."""
     if get_setting('auto_canary_on_start'):
         console.print("[dim]Running quick integrity check...[/dim]")
         try:
-            all_good = all(check_canary(f, EXPECTED_CANARIES[f]) for f in EXPECTED_CANARIES)
+            all_good = True
+            for f in EXPECTED_CANARIES:
+                if not check_canary(f, EXPECTED_CANARIES[f], quiet=True):
+                    all_good = False
             if not all_good:
                 console.print("[red]Warning: Canary check failed on startup![/red]")
         except:
@@ -98,7 +101,7 @@ def add(text, legacy_text):
     """Add a memory note (secure, vectorized)."""
     try:
         text = _coalesce_cli_value(text, legacy_text, 'text')
-        db = DaraVectorDB()
+        db = DaraVectorDB(quiet=True)
         meta = {'type': 'manual', 'timestamp': str(datetime.now())}
         db.add_memory(text, meta)
         console.print(f"[green]✓[/green] Memory added: [bold]{text[:80]}...[/bold]")
@@ -112,17 +115,21 @@ def search(query, legacy_query):
     """Search memories with rich output."""
     try:
         query = _coalesce_cli_value(query, legacy_query, 'query')
-        db = DaraVectorDB()
+        db = DaraVectorDB(quiet=True)
         results = db.search(query, k=5)
         if not results:
             console.print("[yellow]No matches found.[/yellow]")
             return
         table = Table(title="Memory Search Results")
         table.add_column("Score", style="cyan")
-        table.add_column("Content", style="white")
+        table.add_column("Preview", style="white")
+        table.add_column("Type", style="magenta")
         for res in results:
-            meta_str = str(res.get('meta', {}))[:100]
-            table.add_row(f"{res.get('distance', 0):.3f}", meta_str)
+            text = res.get("text", "")[:120].replace("\n", " ")
+            meta = res.get("meta", {})
+            score = res.get("distance", 0.0)
+            mtype = meta.get("type", "unknown")
+            table.add_row(f"{score:.3f}", text, mtype)
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗ Search error:[/red] {str(e)}", style="bold red")
@@ -133,11 +140,23 @@ def rollup():
     try:
         journal = JOURNAL_PATH.read_text()
         summary = f"Journal rollup as of {datetime.now()}: {len(journal)} chars. Recent activity logged."
-        db = DaraVectorDB()
+        db = DaraVectorDB(quiet=True)
         db.add_memory(summary, {'type': 'rollup', 'source': 'journal'})
         console.print("[green]✓ Memory rollup complete.[/green]")
     except Exception as e:
         console.print(f"[red]✗ Rollup error:[/red] {str(e)}", style="bold red")
+
+
+@memory.command()
+def count():
+    """Show vector DB document count."""
+    try:
+        db = DaraVectorDB(quiet=True)
+        cnt = db.count()
+        console.print(f"[green]Vector DB contains {cnt} memories.[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Count error:[/red] {str(e)}", style="bold red")
+
 
 @cli.group()
 def project():
@@ -171,14 +190,15 @@ def suggest(text, legacy_text):
 @cli.command()
 def canary():
     """Run canary integrity check."""
+    console.print("[dim]Running integrity check...[/dim]")
     all_good = True
     for file, expected in EXPECTED_CANARIES.items():
-        if not check_canary(file, expected):
+        if not check_canary(file, expected, quiet=False):
             all_good = False
     if all_good:
-        click.echo("All canaries intact.")
+        console.print("[green]✓ All canaries intact.[/green]")
     else:
-        click.echo("ALERT: Integrity issue detected!")
+        console.print("[red]✗ ALERT: Integrity issue detected![/red]")
 
 @cli.command()
 @click.option('--no-nap', is_flag=True, default=False, help='Skip random nap delay for immediate check-in')

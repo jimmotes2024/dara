@@ -17,7 +17,7 @@ EXPECTED_CANARIES = {
 
 BASE_DIR = '/Users/jimmotes/dara'
 
-def check_canary(filename, expected):
+def check_canary(filename, expected, quiet=False):
     file_path = f'{BASE_DIR}/{filename}'
     if not os.path.exists(file_path):
         print(f"ERROR: {filename} missing at {file_path}!")
@@ -27,7 +27,8 @@ def check_canary(filename, expected):
     if expected not in content:
         print(f"ERROR: Canary mismatch in {filename}! Expected: {expected}")
         return False
-    print(f"OK: {filename} canary verified.")
+    if not quiet:
+        print(f"OK: {filename} canary verified.")
     return True
 
 def main():

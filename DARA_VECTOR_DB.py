@@ -1,68 +1,77 @@
 #!/usr/bin/env python3
 """
-Dara Vector DB - Simple vector database for memory rollup.
-Uses FAISS for vector storage and retrieval.
-Install: pip install faiss-cpu numpy
+Dara Vector DB - Upgraded to Chroma for better persistence, metadata, and rollups.
+Replaces previous FAISS implementation. Much more robust.
 """
-
-import faiss
-import numpy as np
+import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from datetime import datetime
 import json
 import os
-from sentence_transformers import SentenceTransformer
+
+# Use centralized config
+import sys
+sys.path.insert(0, '/Users/jimmotes/dara')
+from dara_config import get_path
 
 class DaraVectorDB:
-    def __init__(self, index_file=None, meta_file=None):
-        base_dir = '/Users/jimmotes/dara'
-        self.index_file = index_file or f'{base_dir}/dara_memory.index'
-        self.meta_file = meta_file or f'{base_dir}/dara_memory_meta.json'
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')  # Small model for embeddings
-        self.index = None
-        self.metadata = []
-        self.load()
+    _initialized = False
 
-    def load(self):
-        if os.path.exists(self.index_file):
-            self.index = faiss.read_index(self.index_file)
-        else:
-            self.index = faiss.IndexFlatIP(384)  # Inner product for cosine similarity
+    def __init__(self, quiet=False):
+        chroma_path = get_path('chroma_path')
+        os.makedirs(chroma_path, exist_ok=True)
+        self.client = chromadb.PersistentClient(path=str(chroma_path))
+        self.embedding_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+        self.collection = self.client.get_or_create_collection(
+            name="dara_memory",
+            embedding_function=self.embedding_fn,
+            metadata={"hnsw:space": "cosine"}
+        )
+        if not quiet and not DaraVectorDB._initialized:
+            print(f"Chroma DB initialized at {chroma_path} (collection: dara_memory)")
+            DaraVectorDB._initialized = True
 
-        if os.path.exists(self.meta_file):
-            with open(self.meta_file, 'r') as f:
-                self.metadata = json.load(f)
-        else:
-            self.metadata = []
+    def add_memory(self, text: str, meta=None):
+        """Add memory with metadata."""
+        if meta is None:
+            meta = {}
+        meta.update({
+            'timestamp': str(datetime.now()),
+            'text_preview': text[:100]
+        })
+        # Use deterministic ID based on content + timestamp
+        doc_id = f"mem_{hash(text + meta.get('timestamp', ''))}"
+        
+        self.collection.add(
+            documents=[text],
+            metadatas=[meta],
+            ids=[doc_id]
+        )
+        return doc_id
 
-    def save(self):
-        faiss.write_index(self.index, self.index_file)
-        with open(self.meta_file, 'w') as f:
-            json.dump(self.metadata, f)
+    def search(self, query: str, k: int = 5):
+        """Search with query, return compatible format (distance + meta)."""
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=k,
+            include=["metadatas", "distances", "documents"]
+        )
+        
+        formatted = []
+        for i in range(len(results['ids'][0])):
+            formatted.append({
+                'distance': results['distances'][0][i] if results['distances'] else 0.0,
+                'meta': results['metadatas'][0][i],
+                'text': results['documents'][0][i]
+            })
+        return formatted
 
-    def add_memory(self, text, meta=None):
-        embedding = self.model.encode([text])[0]
-        embedding = np.array([embedding]).astype('float32')
-        faiss.normalize_L2(embedding)  # Normalize for cosine
-        self.index.add(embedding)
-        self.metadata.append(meta or {'text': text, 'timestamp': str(np.datetime64('now'))})
-        self.save()
-
-    def search(self, query, k=5):
-        query_emb = self.model.encode([query])[0]
-        query_emb = np.array([query_emb]).astype('float32')
-        faiss.normalize_L2(query_emb)
-        distances, indices = self.index.search(query_emb, k)
-        results = []
-        for i, idx in enumerate(indices[0]):
-            if idx < len(self.metadata):
-                results.append({
-                    'meta': self.metadata[idx],
-                    'distance': distances[0][i]
-                })
-        return results
+    def count(self):
+        return self.collection.count()
 
 if __name__ == '__main__':
     db = DaraVectorDB()
-    # Example usage
-    db.add_memory("Remember to prioritize security in all projects.")
-    results = db.search("security")
-    print(results)
+    db.add_memory("Remember to prioritize security in all projects.", {'type': 'test'})
+    results = db.search("security", k=3)
+    print(f"Found {len(results)} results. Count: {db.count()}")
+    print(results[0] if results else "No results")
