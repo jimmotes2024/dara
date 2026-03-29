@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+dara_memory.index
+dara_memory_meta.json
+.DS_Store
